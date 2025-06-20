@@ -7,11 +7,11 @@ import edu.ifpb.sorveteriapp.state.PedidoRecebidoState;
 import edu.ifpb.sorveteriapp.state.PedidoState;
 
 public class Pedido {
-    private String idPedido;
-    private String nomeCliente;
-    private double precoTotal;
+    private final String idPedido;
+    private final String nomeCliente;
+    private final double precoTotal;
     private PedidoState stateAtual;
-    private PedidoSubject pedidoSubject;
+    private final PedidoSubject pedidoSubject;
 
 
     public Pedido(String idPedido, String nomeCliente, double precoTotal) {
@@ -52,7 +52,7 @@ public class Pedido {
         pedidoSubject.removeObserver(observer);
     }
 
-    public void notifyObserver(String status) {
-        pedidoSubject.notifyObservers(idPedido, status);
+    public void notifyObservers() {
+        pedidoSubject.notifyObservers(idPedido, stateAtual.getClass().getSimpleName());
     }
 }
