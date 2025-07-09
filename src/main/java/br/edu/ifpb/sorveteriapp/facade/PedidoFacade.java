@@ -1,25 +1,11 @@
 package br.edu.ifpb.sorveteriapp.facade;
 
-// Imports dos modelos
-import br.edu.ifpb.sorveteriapp.model.Pedido;
-import br.edu.ifpb.sorveteriapp.model.Sorvete;
-import br.edu.ifpb.sorveteriapp.model.Cliente;
-import br.edu.ifpb.sorveteriapp.model.Funcionario;
-
-// Imports das interfaces e implementações de repositório
-import br.edu.ifpb.sorveteriapp.repository.PedidoRepository;
-import br.edu.ifpb.sorveteriapp.repository.JdbcPedidoRepository;
-import br.edu.ifpb.sorveteriapp.repository.ClienteRepository;
-import br.edu.ifpb.sorveteriapp.repository.JdbcClienteRepository;
-import br.edu.ifpb.sorveteriapp.repository.FuncionarioRepository;
-import br.edu.ifpb.sorveteriapp.repository.JdbcFuncionarioRepository;
-
-// Imports dos outros padrões
+import br.edu.ifpb.sorveteriapp.model.*;
+import br.edu.ifpb.sorveteriapp.repository.*;
+import br.edu.ifpb.sorveteriapp.command.*;
 import br.edu.ifpb.sorveteriapp.factory.SorveteFactory;
-import br.edu.ifpb.sorveteriapp.observer.MonitorDeCozinha;
-import br.edu.ifpb.sorveteriapp.service.FilaDePedidos;
-import br.edu.ifpb.sorveteriapp.strategy.DescontoStrategy;
 import br.edu.ifpb.sorveteriapp.strategy.CalculadoraDesconto;
+import br.edu.ifpb.sorveteriapp.strategy.DescontoStrategy;
 
 import java.util.List;
 import java.util.UUID;
@@ -27,7 +13,7 @@ import java.util.UUID;
 /**
  * Facade: Ponto de entrada centralizado para todas as operações do sistema.
  * Orquestra a interação entre repositórios, factories, services e outros componentes,
- * agora utilizando uma camada de persistência com banco de dados (JDBC).
+ * utilizando uma camada de persistência com banco de dados (JDBC).
  */
 public class PedidoFacade {
 
@@ -35,31 +21,25 @@ public class PedidoFacade {
     private final PedidoRepository pedidoRepository;
     private final ClienteRepository clienteRepository;
     private final FuncionarioRepository funcionarioRepository;
-    private final FilaDePedidos filaDePedidos;
+    // O atributo FilaDePedidos não é mais necessário aqui, simplificando a classe.
 
     /**
      * Construtor da Facade.
-     * Inicializa todas as dependências, utilizando as implementações JDBC
-     * para garantir a persistência dos dados no Neon DB.
+     * Inicializa todas as dependências, utilizando as implementações JDBC.
      */
     public PedidoFacade() {
         this.sorveteFactory = new SorveteFactory();
-
-        // A MUDANÇA CRÍTICA: Trocamos as implementações em memória pelas implementações JDBC.
         this.pedidoRepository = new JdbcPedidoRepository();
         this.clienteRepository = new JdbcClienteRepository();
         this.funcionarioRepository = new JdbcFuncionarioRepository();
-
-        // O Singleton da fila de pedidos continua o mesmo.
-        this.filaDePedidos = FilaDePedidos.getInstance();
     }
 
-    // Métodos para gerenciar Clientes
+    // --- MÉTODOS DE CLIENTE E FUNCIONÁRIO (permanecem iguais) ---
+
     public Cliente criarCliente(String nome) {
         String id = UUID.randomUUID().toString();
         Cliente cliente = new Cliente(id, nome);
         clienteRepository.salvar(cliente);
-        System.out.println("Cliente '" + nome + "' salvo no banco de dados.");
         return cliente;
     }
 
@@ -67,16 +47,10 @@ public class PedidoFacade {
         return clienteRepository.listarTodos();
     }
 
-    public Cliente buscarClientePorId(String id) {
-        return clienteRepository.buscarPorId(id);
-    }
-
-    // Métodos para gerenciar Funcionários
     public Funcionario criarFuncionario(String nome, String cargo) {
         String id = UUID.randomUUID().toString();
         Funcionario funcionario = new Funcionario(id, nome, cargo);
         funcionarioRepository.salvar(funcionario);
-        System.out.println("Funcionário '" + nome + "' salvo no banco de dados.");
         return funcionario;
     }
 
@@ -84,76 +58,80 @@ public class PedidoFacade {
         return funcionarioRepository.listarTodos();
     }
 
-    public Funcionario buscarFuncionarioPorId(String id) {
-        return funcionarioRepository.buscarPorId(id);
-    }
+    // --- MÉTODOS DE NEGÓCIO DE PEDIDOS (otimizados) ---
 
     /**
-     * Versão principal do método para fazer um pedido.
-     * Recebe um objeto Sorvete já montado (potencialmente com Decorators).
-     *
-     * @param nomeCliente      O nome do cliente que faz o pedido.
-     * @param sorvete          O objeto Sorvete, já configurado.
-     * @param descontoStrategy A estratégia de desconto a ser aplicada.
+     * Cria um novo pedido com base na solicitação do cliente.
+     * @param nomeCliente O nome do cliente.
+     * @param sorvete O objeto Sorvete já montado com decorators.
      * @return O objeto Pedido criado e persistido.
      */
-    public Pedido fazerPedido(String nomeCliente, Sorvete sorvete, DescontoStrategy descontoStrategy) {
-        System.out.println("\n--- Realizando Novo Pedido ---");
-        System.out.println("Sorvete base: " + sorvete.getDescricao());
-
-        CalculadoraDesconto calculadora = new CalculadoraDesconto(descontoStrategy);
-        double precoFinal = calculadora.calcularPreco(sorvete.getPreco());
-
-        System.out.printf("Preço final após desconto: R$%.2f\n", precoFinal);
-
+    public Pedido fazerPedido(String nomeCliente, Sorvete sorvete) {
+        double precoOriginal = sorvete.getPreco();
         String idPedido = UUID.randomUUID().toString();
-        Pedido pedido = new Pedido(idPedido, nomeCliente, precoFinal);
 
-        // Anexa um observer padrão para o monitor da cozinha
-        pedido.anexarObserver(new MonitorDeCozinha());
+        Pedido pedido = new Pedido(idPedido, nomeCliente, precoOriginal);
 
-        // Salva o pedido no banco de dados em seu estado inicial (PedidoRecebidoState)
+        // O Observer do MonitorDeCozinha poderia ser adicionado aqui, mas para a simulação
+        // em tempo real, o loop na Main do cliente cumpre melhor esse papel.
+        // pedido.anexarObserver(new MonitorDeCozinha());
+
         pedidoRepository.salvar(pedido);
-        System.out.println("Pedido salvo no repositório com ID: " + idPedido.substring(0, 8));
-
-        // Adiciona à fila em memória para processamento sequencial
-        filaDePedidos.adicionarPedido(pedido.getIdPedido());
-
+        System.out.println("Pedido para " + nomeCliente + " criado e salvo no sistema.");
         return pedido;
     }
 
     /**
-     * Processa o próximo pedido da fila.
-     * Este método simula a cozinha pegando o próximo item para preparar.
+     * Aplica uma estratégia de desconto a um pedido existente.
+     * @param pedidoId O ID do pedido a ser modificado.
+     * @param strategy A estratégia de desconto a ser aplicada.
      */
-    public void processarProximoPedidoDaFila() {
-        System.out.println("\n--- Cozinha: Processando Próximo Pedido da Fila ---");
-        String idPedido = filaDePedidos.processarProximo();
+    public void aplicarDesconto(String pedidoId, DescontoStrategy strategy) {
+        Pedido pedido = pedidoRepository.buscarPorId(pedidoId);
+        if (pedido != null) {
+            CalculadoraDesconto calculadora = new CalculadoraDesconto(strategy);
+            double precoFinal = calculadora.calcularPreco(pedido.getPrecoOriginal());
 
-        if (idPedido != null) {
-            Pedido pedido = pedidoRepository.buscarPorId(idPedido);
-            if (pedido != null) {
-                System.out.println("Processando pedido: " + pedido.getIdPedido().substring(0,8) + " para " + pedido.getNomeCliente());
+            pedido.setPrecoTotal(precoFinal);
+            pedido.setDescontoAplicado(strategy.getClass().getSimpleName());
 
-                // Avança o estado do pedido (State Pattern)
-                pedido.processarPedido();
+            pedidoRepository.salvar(pedido);
+            System.out.println("\nDesconto '" + strategy.getClass().getSimpleName() + "' aplicado! Novo preço: R$" + String.format("%.2f", precoFinal));
+        } else {
+            System.err.println("ERRO: Pedido não encontrado para aplicar desconto.");
+        }
+    }
 
-                // Salva a alteração de estado no banco de dados
-                pedidoRepository.salvar(pedido);
-            } else {
-                System.out.println("ERRO: Pedido com ID " + idPedido + " estava na fila mas não foi encontrado no banco de dados.");
-            }
+    public void atualizarPedido(Pedido pedido) {
+        pedidoRepository.salvar(pedido);
+    }
+
+    /**
+     * Avança o estado de um pedido específico.
+     * Este método substitui o antigo `processarProximoPedidoDaFila`.
+     * @param pedidoId O ID do pedido a ser processado.
+     */
+    public void processarPedido(String pedidoId) {
+        Pedido pedido = pedidoRepository.buscarPorId(pedidoId);
+        if (pedido != null) {
+            System.out.println("\nAvançando status do pedido de: " + pedido.getNomeCliente());
+            pedido.processarPedido(); // O State Pattern faz a transição
+            pedidoRepository.salvar(pedido); // Salva o novo estado no banco
+        } else {
+            System.err.println("ERRO: Pedido com ID " + pedidoId + " não encontrado para processamento.");
         }
     }
 
     /**
-     * Salva o estado atual de um pedido no repositório.
-     * Útil para quando uma atualização de estado é feita fora do fluxo da fila.
-     * @param pedido O pedido a ser salvo.
+     * Executa o comando para registrar o pagamento de um pedido.
+     * @param pedidoId O ID do pedido a ser pago.
      */
-    public void salvarPedido(Pedido pedido) {
-        pedidoRepository.salvar(pedido);
+    public void registrarPagamento(String pedidoId) {
+        Command comandoPagamento = new ProcessarPagamentoCommand(this, pedidoId);
+        comandoPagamento.execute();
     }
+
+    // --- MÉTODOS DE ACESSO A DADOS (permanecem iguais) ---
 
     public List<Pedido> listarTodosPedidos() {
         return pedidoRepository.listarTodos();
@@ -163,11 +141,10 @@ public class PedidoFacade {
         return pedidoRepository.buscarPorId(id);
     }
 
-    /**
-     * Expõe a fábrica de sorvetes para que a interface de usuário (Main)
-     * possa criar a base do sorvete antes de decorá-lo.
-     * @return A instância da SorveteFactory.
-     */
+    // O método salvarPedido não é mais necessário publicamente, pois cada ação já salva.
+    // Mas pode ser mantido se preferir. Para simplificar, vou removê-lo.
+    // public void salvarPedido(Pedido pedido) { ... }
+
     public SorveteFactory getSorveteFactory() {
         return this.sorveteFactory;
     }

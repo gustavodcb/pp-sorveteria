@@ -12,26 +12,24 @@ public class JdbcPedidoRepository implements PedidoRepository {
 
     @Override
     public void salvar(Pedido pedido) {
-        // Usamos "ON CONFLICT" para que o mesmo método sirva para criar e atualizar.
-        String sql = "INSERT INTO pedidos (id_pedido, nome_cliente, preco_total, status) VALUES (?, ?, ?, ?) " +
+        String sql = "INSERT INTO pedidos (id_pedido, nome_cliente, preco_total, status, preco_original, desconto_aplicado) VALUES (?, ?, ?, ?, ?, ?) " +
                 "ON CONFLICT (id_pedido) DO UPDATE SET nome_cliente = EXCLUDED.nome_cliente, " +
-                "preco_total = EXCLUDED.preco_total, status = EXCLUDED.status";
+                "preco_total = EXCLUDED.preco_total, status = EXCLUDED.status, preco_original = EXCLUDED.preco_original, desconto_aplicado = EXCLUDED.desconto_aplicado";
 
-        try (Connection conn = ConexaoDB.getConexao();
-             PreparedStatement pst = conn.prepareStatement(sql)) {
-
+        try (Connection conn = ConexaoDB.getConexao(); PreparedStatement pst = conn.prepareStatement(sql)) {
             pst.setString(1, pedido.getIdPedido());
             pst.setString(2, pedido.getNomeCliente());
             pst.setDouble(3, pedido.getPrecoTotal());
-            pst.setString(4, pedido.getStateAtual().getClass().getSimpleName()); // Salva o nome da classe de estado
-
+            pst.setString(4, pedido.getStateAtual().getClass().getSimpleName());
+            pst.setDouble(5, pedido.getPrecoOriginal()); // Nova coluna
+            pst.setString(6, pedido.getDescontoAplicado()); // Nova coluna
             pst.executeUpdate();
-
         } catch (SQLException e) {
-            System.err.println("Erro ao salvar pedido no banco de dados: " + e.getMessage());
-            e.printStackTrace();
+            throw new RuntimeException("Falha crítica ao salvar o pedido no banco de dados.", e);
         }
     }
+
+
 
     @Override
     public Pedido buscarPorId(String id) {
@@ -74,26 +72,23 @@ public class JdbcPedidoRepository implements PedidoRepository {
     private Pedido mapRowToPedido(ResultSet rs) throws SQLException {
         String idPedido = rs.getString("id_pedido");
         String nomeCliente = rs.getString("nome_cliente");
-        double precoTotal = rs.getDouble("preco_total");
+        double precoOriginal = rs.getDouble("preco_original");
+
+        // Cria o pedido com o preço original
+        Pedido pedido = new Pedido(idPedido, nomeCliente, precoOriginal);
+
+        // Seta os valores que podem ter sido modificados
+        pedido.setPrecoTotal(rs.getDouble("preco_total"));
+        pedido.setDescontoAplicado(rs.getString("desconto_aplicado"));
         String status = rs.getString("status");
 
-        Pedido pedido = new Pedido(idPedido, nomeCliente, precoTotal);
-
-        // Recria o objeto de estado correto com base no que foi salvo no DB
+        // Recria o objeto de estado correto
         switch (status) {
-            case "PedidoRecebidoState":
-                pedido.setState(new PedidoRecebidoState());
-                break;
-            case "PedidoEmPreparoState":
-                pedido.setState(new PedidoEmPreparoState());
-                break;
-            case "PedidoProntoState":
-                pedido.setState(new PedidoProntoState());
-                break;
-            case "PedidoEntregueState":
-                pedido.setState(new PedidoEntregueState());
-                break;
-            // Adicione outros estados se houver
+            case "PedidoRecebidoState": pedido.setState(new PedidoRecebidoState()); break;
+            case "PedidoEmPreparoState": pedido.setState(new PedidoEmPreparoState()); break;
+            case "PedidoProntoState": pedido.setState(new PedidoProntoState()); break;
+            case "AguardandoPagamentoState": pedido.setState(new AguardandoPagamentoState()); break;
+            case "PedidoEntregueState": pedido.setState(new PedidoEntregueState()); break;
         }
         return pedido;
     }
