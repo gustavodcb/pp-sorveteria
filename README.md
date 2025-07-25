@@ -1,6 +1,10 @@
 # pp-sorveteria
 Projeto feito durante disciplina padrões de projeto 
 
+### Como iniciar a aplicação?
+  - Para iniciar a aplicação no modo 'Cliente', digite o comando na pasta 'target' na raiz do projeto: 'java -jar sorveteriaApp.jar cliente'
+  - Para iniciar a aplicação no modo 'Funcionario', digite o comando na pasta 'target' na raiz do projeto: 'java -jar sorveteriaApp.jar funcionario'
+
 ### 🎯 Objetivo do projeto:  
 Criar um sistema de pedidos para uma sorveteria, permitindo gerenciar sabores, personalizar pedidos, aplicar descontos, acompanhar atualizações e otimizar o fluxo de pedidos.
 
