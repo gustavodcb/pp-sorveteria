@@ -5,8 +5,7 @@ import br.edu.ifpb.sorveteriapp.model.Pedido;
 public class PedidoProntoState implements PedidoState {
     @Override
     public void manusearPedido(Pedido pedido) {
-        System.out.println("Pedido " + pedido.getIdPedido().substring(0,8) + " está PRONTO e aguardando pagamento.");
-        pedido.setState(new AguardandoPagamentoState());
+        System.out.println("Ação inválida. O pedido já está pronto. O próximo passo deve ser 'Registrar Pagamento'.");
     }
 }
 

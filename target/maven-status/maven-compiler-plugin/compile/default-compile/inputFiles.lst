@@ -10,7 +10,6 @@
 /home/paulo/IdeaProjects/pp-sorveteria/src/main/java/br/edu/ifpb/sorveteriapp/observer/MonitorDeCozinha.java
 /home/paulo/IdeaProjects/pp-sorveteria/src/main/java/br/edu/ifpb/sorveteriapp/repository/FuncionarioRepository.java
 /home/paulo/IdeaProjects/pp-sorveteria/src/main/java/br/edu/ifpb/sorveteriapp/strategy/Sazonal.java
-/home/paulo/IdeaProjects/pp-sorveteria/src/main/java/br/edu/ifpb/sorveteriapp/state/AguardandoPagamentoState.java
 /home/paulo/IdeaProjects/pp-sorveteria/src/main/java/br/edu/ifpb/sorveteriapp/factory/SorveteFactory.java
 /home/paulo/IdeaProjects/pp-sorveteria/src/main/java/br/edu/ifpb/sorveteriapp/model/Milkshake.java
 /home/paulo/IdeaProjects/pp-sorveteria/src/main/java/br/edu/ifpb/sorveteriapp/state/PedidoProntoState.java
@@ -27,6 +26,7 @@
 /home/paulo/IdeaProjects/pp-sorveteria/src/main/java/br/edu/ifpb/sorveteriapp/decorator/ChantilyDecorator.java
 /home/paulo/IdeaProjects/pp-sorveteria/src/main/java/br/edu/ifpb/sorveteriapp/command/FazerPedidoCommand.java
 /home/paulo/IdeaProjects/pp-sorveteria/src/main/java/br/edu/ifpb/sorveteriapp/strategy/CalculadoraDesconto.java
+/home/paulo/IdeaProjects/pp-sorveteria/src/main/java/br/edu/ifpb/sorveteriapp/model/ItemPedido.java
 /home/paulo/IdeaProjects/pp-sorveteria/src/main/java/br/edu/ifpb/sorveteriapp/state/PedidoEntregueState.java
 /home/paulo/IdeaProjects/pp-sorveteria/src/main/java/br/edu/ifpb/sorveteriapp/model/Sorvete.java
 /home/paulo/IdeaProjects/pp-sorveteria/src/main/java/br/edu/ifpb/sorveteriapp/command/Command.java

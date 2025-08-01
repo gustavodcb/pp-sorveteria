@@ -1,3 +1,4 @@
+br/edu/ifpb/sorveteriapp/model/ItemPedido.class
 br/edu/ifpb/sorveteriapp/strategy/DescontoStrategy.class
 br/edu/ifpb/sorveteriapp/strategy/CalculadoraDesconto.class
 br/edu/ifpb/sorveteriapp/observer/ClienteNotificacaoObserver.class
@@ -17,6 +18,7 @@ br/edu/ifpb/sorveteriapp/model/Pedido.class
 br/edu/ifpb/sorveteriapp/state/PedidoEmPreparoState.class
 br/edu/ifpb/sorveteriapp/strategy/Sazonal.class
 br/edu/ifpb/sorveteriapp/command/FazerPedidoCommand.class
+br/edu/ifpb/sorveteriapp/repository/JdbcPedidoRepository$1.class
 br/edu/ifpb/sorveteriapp/repository/ClienteRepository.class
 br/edu/ifpb/sorveteriapp/state/PedidoProntoState.class
 br/edu/ifpb/sorveteriapp/singleton/FilaPedidos.class
@@ -30,7 +32,6 @@ br/edu/ifpb/sorveteriapp/service/FilaDePedidos.class
 br/edu/ifpb/sorveteriapp/service/PedidoService.class
 br/edu/ifpb/sorveteriapp/model/Picole.class
 br/edu/ifpb/sorveteriapp/decorator/ChantilyDecorator.class
-br/edu/ifpb/sorveteriapp/state/AguardandoPagamentoState.class
 br/edu/ifpb/sorveteriapp/state/PedidoEntregueState.class
 br/edu/ifpb/sorveteriapp/repository/JdbcPedidoRepository.class
 br/edu/ifpb/sorveteriapp/model/Cliente.class

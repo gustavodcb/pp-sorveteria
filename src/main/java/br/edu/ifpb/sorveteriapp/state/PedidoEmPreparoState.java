@@ -6,7 +6,7 @@ public class PedidoEmPreparoState implements PedidoState {
     @Override
     public void manusearPedido(Pedido pedido) {
         System.out.println("Pedido " + pedido.getIdPedido() + " está PRONTO para entrega.");
-        pedido.setState(new PedidoProntoState());
+        pedido.setEstadoPreparo(new PedidoProntoState());
     }
 }
 

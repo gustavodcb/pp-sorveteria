@@ -13,22 +13,15 @@ public class ConexaoDB {
 
     public static Connection getConexao() {
         try {
-            // Permite reconectar se a conexão foi fechada ou está inválida
             if (conexao == null || conexao.isClosed()) {
                 try {
-
-                    System.out.println("Tentando conectar ao banco de dados...");
+                    // System.out.println("Tentando conectar ao banco de dados..."); // Comentado
                     conexao = DriverManager.getConnection(URL);
-                    System.out.println("Conexão com o banco de dados estabelecida com sucesso!");
-
+                    // System.out.println("Conexão com o banco de dados estabelecida com sucesso!"); // Comentado
                 } catch (SQLException e) {
+                    // Erros críticos ainda devem ser mostrados
                     System.err.println("### ERRO CRÍTICO AO CONECTAR AO BANCO DE DADOS ###");
                     System.err.println("Mensagem: " + e.getMessage());
-                    System.err.println("Verifique se:");
-                    System.err.println("1. A URL JDBC está no formato correto (host, database, user, password).");
-                    System.err.println("2. O usuário e a senha estão corretos.");
-                    System.err.println("3. A dependência do PostgreSQL está no seu pom.xml.");
-                    System.err.println("4. Sua máquina tem acesso à internet.");
                     throw new RuntimeException(e);
                 }
             }

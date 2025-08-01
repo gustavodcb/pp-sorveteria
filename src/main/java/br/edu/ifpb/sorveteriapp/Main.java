@@ -1,12 +1,19 @@
 package br.edu.ifpb.sorveteriapp;
 
-import br.edu.ifpb.sorveteriapp.decorator.*;
+import br.edu.ifpb.sorveteriapp.decorator.CaldaDecorator;
+import br.edu.ifpb.sorveteriapp.decorator.ChantilyDecorator;
+import br.edu.ifpb.sorveteriapp.decorator.CoberturaDecorator;
 import br.edu.ifpb.sorveteriapp.facade.PedidoFacade;
+import br.edu.ifpb.sorveteriapp.model.ItemPedido;
 import br.edu.ifpb.sorveteriapp.model.Pedido;
 import br.edu.ifpb.sorveteriapp.model.Sorvete;
-import br.edu.ifpb.sorveteriapp.state.*;
-import br.edu.ifpb.sorveteriapp.strategy.*;
+import br.edu.ifpb.sorveteriapp.state.PedidoProntoState;
+import br.edu.ifpb.sorveteriapp.strategy.ClienteFrequente;
+import br.edu.ifpb.sorveteriapp.strategy.DescontoStrategy;
+import br.edu.ifpb.sorveteriapp.strategy.Sazonal;
+import br.edu.ifpb.sorveteriapp.strategy.SemDesconto;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Scanner;
 import java.util.stream.Collectors;
@@ -36,38 +43,120 @@ public class Main {
         scanner.close();
     }
 
+    /**
+     * Exibe o painel de status completo para o cliente.
+     * @param pedido O objeto Pedido com os dados mais recentes.
+     */
+    private static void exibirPainelCliente(Pedido pedido) {
+        limparTela();
+        System.out.println("====== PAINEL DO SEU PEDIDO ======");
+        System.out.println("Cliente: " + pedido.getNomeCliente());
+        System.out.println("ID do Pedido: " + pedido.getIdPedido().substring(0, 8) + "...");
+        System.out.println("------------------------------------");
+
+        // Exibe os itens do pedido
+        System.out.println("Itens do seu pedido:");
+        if (pedido.getItens() == null || pedido.getItens().isEmpty()) {
+            System.out.println("  (Nenhum item encontrado)");
+        } else {
+            for (ItemPedido item : pedido.getItens()) {
+                System.out.printf("  - %dx %s\n", item.getQuantidade(), item.getDescricao());
+            }
+        }
+        System.out.println("------------------------------------");
+
+        // Exibe o status do preparo
+        System.out.println("Status do Preparo:   " + traduzirStatus(pedido.getEstadoPreparo().getClass().getSimpleName()));
+
+        // Exibe o status do pagamento
+        String statusPagamento = pedido.getStatusPagamento().equals("PAGO") ? "Confirmado!" : "Pendente";
+        System.out.println("Status do Pagamento:  " + statusPagamento);
+
+        System.out.println("------------------------------------");
+
+        // Exibe os detalhes de preço e desconto
+        String descontoStr = pedido.getDescontoAplicado() != null && !pedido.getDescontoAplicado().equals("Nenhum") && !pedido.getDescontoAplicado().equals("SemDesconto")
+                ? pedido.getDescontoAplicado()
+                : "Nenhum";
+        System.out.printf("Valor Original:      R$ %.2f\n", pedido.getPrecoOriginal());
+        System.out.printf("Desconto Aplicado:   %s\n", descontoStr);
+        System.out.printf("VALOR FINAL A PAGAR: R$ %.2f\n", pedido.getPrecoTotal());
+
+        System.out.println("====================================");
+        System.out.println("\n(Este painel atualiza a cada 3 segundos)");
+    }
+
     // =================================================================
-    // MODO CLIENTE - MODIFICADO
+    // MODO CLIENTE - CORRIGIDO COM LÓGICA DE CARRINHO
     // =================================================================
     private static void iniciarModoCliente() {
         System.out.print("\nDigite seu nome: ");
         String nomeCliente = scanner.nextLine();
 
-        Sorvete meuSorvete = criarSorveteInterativo();
-        if (meuSorvete == null) {
-            System.out.println("Criação do sorvete cancelada.");
-            return;
+        List<ItemPedido> carrinho = new ArrayList<>();
+
+        while (true) {
+            limparTela();
+            System.out.println("--- MONTANDO SEU PEDIDO (Cliente: " + nomeCliente + ") ---");
+            exibirCarrinho(carrinho);
+
+            System.out.println("1. Adicionar novo item ao pedido");
+            System.out.println("2. Finalizar e enviar pedido");
+            System.out.println("0. Cancelar pedido");
+            System.out.print("Opção: ");
+            int opcao = lerInteiro();
+
+            if (opcao == 1) {
+                Sorvete novoSorvete = criarSorveteInterativo();
+                if (novoSorvete != null) {
+                    System.out.print("Digite a quantidade para '" + novoSorvete.getDescricao() + "': ");
+                    int quantidade = lerInteiro();
+                    if (quantidade > 0) {
+                        carrinho.add(new ItemPedido(novoSorvete, quantidade));
+                        System.out.println("Item adicionado ao carrinho!");
+                        pressioneEnterParaContinuar();
+                    }
+                }
+            } else if (opcao == 2) {
+                if (carrinho.isEmpty()) {
+                    System.out.println("Seu carrinho está vazio. Adicione um item antes de finalizar.");
+                    pressioneEnterParaContinuar();
+                    continue;
+                }
+                // Chamada correta: passando a lista de itens para a facade
+                Pedido meuPedido = facade.fazerPedido(nomeCliente, carrinho);
+
+                System.out.println("\nObrigado! Seu pedido foi enviado. Acompanhe o status abaixo:");
+                monitorarPedido(meuPedido.getIdPedido());
+                return; // Encerra o modo cliente
+            } else if (opcao == 0) {
+                System.out.println("Pedido cancelado.");
+                return; // Encerra o modo cliente
+            } else {
+                System.out.println("Opção inválida.");
+                pressioneEnterParaContinuar();
+            }
         }
-
-        System.out.printf("\nSeu sorvete: %s | Preço base: R$%.2f\n", meuSorvete.getDescricao(), meuSorvete.getPreco());
-
-        // A lógica de desconto foi REMOVIDA do cliente.
-        // O método fazerPedido na facade também precisa ser ajustado para não receber a strategy.
-        System.out.println("\nEnviando seu pedido...");
-        Pedido meuPedido = facade.fazerPedido(nomeCliente, meuSorvete);
-
-        if(meuPedido == null) {
-            System.out.println("Houve um erro ao processar seu pedido.");
-            return;
-        }
-
-        System.out.println("\nObrigado! Seu pedido foi enviado. Acompanhe o status abaixo:");
-        monitorarPedido(meuPedido.getIdPedido());
     }
 
-    // Este método foi criado para organizar a criação do sorvete
+    private static void exibirCarrinho(List<ItemPedido> carrinho) {
+        if (carrinho.isEmpty()) {
+            System.out.println("Seu carrinho está vazio.");
+        } else {
+            System.out.println("Itens no seu carrinho:");
+            double subtotal = 0;
+            for (int i = 0; i < carrinho.size(); i++) {
+                ItemPedido item = carrinho.get(i);
+                System.out.printf("  %d. %dx %s (R$ %.2f cada)\n",
+                        i + 1, item.getQuantidade(), item.getDescricao(), item.getPrecoUnitario());
+                subtotal += item.getSubtotal();
+            }
+            System.out.printf("\nSubtotal do Pedido: R$ %.2f\n", subtotal);
+        }
+        System.out.println("------------------------------------");
+    }
+
     private static Sorvete criarSorveteInterativo() {
-        // 1. Escolher o sorvete base (Factory)
         System.out.println("\n--- Escolha o tipo de sorvete ---");
         System.out.println("1. Picolé");
         System.out.println("2. Sorvete de Massa");
@@ -83,22 +172,19 @@ public class Main {
         }
 
         Sorvete sorveteBase = facade.getSorveteFactory().criarSorvete(tipoSorvete);
-
-        // 2. Personalizar o sorvete (Decorator)
         return adicionarExtras(sorveteBase);
     }
 
     private static Sorvete adicionarExtras(Sorvete sorvete) {
         while (true) {
-            System.out.println("\n--- Adicionar extras? ---");
+            System.out.println("\n--- Adicionar extras para: " + sorvete.getDescricao() + " ---");
             System.out.println("1. Cobertura (+R$1.50)");
             System.out.println("2. Calda (+R$1.50)");
             System.out.println("3. Chantily (+R$1.50)");
-            System.out.println("0. Finalizar");
+            System.out.println("0. Confirmar este item");
             System.out.print("Opção: ");
             int extraOpcao = lerInteiro();
 
-            // Corrigindo o uso de classes anônimas
             switch (extraOpcao) {
                 case 1: sorvete = new CoberturaDecorator(sorvete); System.out.println("Cobertura adicionada!"); break;
                 case 2: sorvete = new CaldaDecorator(sorvete); System.out.println("Calda adicionada!"); break;
@@ -110,54 +196,34 @@ public class Main {
         }
     }
 
-    /**
-     * SIMULAÇÃO DO OBSERVER EM TEMPO REAL PARA O CLIENTE
-     */
     private static void monitorarPedido(String pedidoId) {
-        String statusAnterior = "";
         while (true) {
             Pedido pedidoAtualizado = facade.buscarPedidoPorId(pedidoId);
             if (pedidoAtualizado == null) {
-                System.out.println("ERRO: Seu pedido não foi encontrado no sistema.");
+                System.out.println("\nERRO: Seu pedido foi cancelado ou não pôde ser encontrado.");
                 break;
             }
-            String statusAtual = pedidoAtualizado.getStateAtual().getClass().getSimpleName();
 
-            if (!statusAtual.equals(statusAnterior)) {
-                System.out.println("\n-------------------------------------------");
-                System.out.println(">> ATUALIZAÇÃO: Seu pedido mudou de status!");
-                System.out.println(">> Novo Status: " + traduzirStatus(statusAtual));
-                System.out.println("-------------------------------------------");
-                statusAnterior = statusAtual;
-            }
+            exibirPainelCliente(pedidoAtualizado);
 
-            if (pedidoAtualizado.getStateAtual() instanceof PedidoEntregueState) {
-                System.out.println("\nSeu pedido foi finalizado! Obrigado e volte sempre!");
+            if (isPedidoFinalizado(pedidoAtualizado)) {
+                System.out.println("\n>>> SEU PEDIDO ESTÁ PRONTO E PAGO! PODE RETIRAR! <<<");
+                System.out.println("Obrigado por escolher nossa sorveteria!");
                 break;
             }
 
             try {
-                Thread.sleep(5000); // Verifica a cada 5 segundos
+                Thread.sleep(3000);
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
+                System.out.println("Monitoramento interrompido.");
                 break;
             }
         }
     }
 
-    private static String traduzirStatus(String statusClassName) {
-        switch (statusClassName) {
-            case "PedidoRecebidoState": return "Recebido pela cozinha";
-            case "PedidoEmPreparoState": return "Em preparo!";
-            case "PedidoProntoState": return "Pronto para retirada";
-            case "AguardandoPagamentoState": return "Aguardando Pagamento no caixa";
-            case "PedidoEntregueState": return "Entregue. Bom apetite!";
-            default: return statusClassName;
-        }
-    }
-
     // =================================================================
-    // MODO FUNCIONÁRIO - MODIFICADO
+    // MODO FUNCIONÁRIO
     // =================================================================
     private static void iniciarModoFuncionario() {
         while (true) {
@@ -178,14 +244,14 @@ public class Main {
     }
 
     private static void gerenciarPedidos() {
-        System.out.println("\n--- Gerenciador de Pedidos ---");
+        System.out.println("\n--- Gerenciador de Pedidos Ativos ---");
         List<Pedido> pedidosAtivos = facade.listarTodosPedidos().stream()
-                .filter(p -> !(p.getStateAtual() instanceof PedidoEntregueState))
+                .filter(p -> !isPedidoFinalizado(p))
                 .collect(Collectors.toList());
 
         if (pedidosAtivos.isEmpty()) {
-            System.out.println("Nenhum pedido ativo no momento. Pressione Enter para voltar.");
-            scanner.nextLine();
+            System.out.println("Nenhum pedido ativo no momento.");
+            pressioneEnterParaContinuar();
             return;
         }
 
@@ -211,29 +277,53 @@ public class Main {
 
     private static void exibirMenuDeAcoesDoPedido(Pedido pedido) {
         while (true) {
-            System.out.println("\n--- Ações para o Pedido de " + pedido.getNomeCliente() + " (" + pedido.getIdPedido().substring(0,8) + ") ---");
+            limparTela();
+            System.out.println("--- Ações para o Pedido de " + pedido.getNomeCliente() + " (" + pedido.getIdPedido().substring(0,8) + ") ---");
             imprimirDetalhesPedido(pedido);
 
-            System.out.println("\n1. Avançar Status do Pedido");
-            System.out.println("2. Aplicar Desconto (Strategy)");
-            System.out.println("3. Registrar Pagamento (Command)");
+            System.out.println("\nOpções disponíveis:");
+            if (!(pedido.getEstadoPreparo() instanceof PedidoProntoState)) {
+                System.out.println("1. Avançar Status do Preparo");
+            }
+            System.out.println("2. Aplicar Desconto");
+            if (pedido.getStatusPagamento().equals("NAO_PAGO")) {
+                System.out.println("3. Registrar Pagamento");
+            }
             System.out.println("0. Voltar para a lista de pedidos");
             System.out.print("Ação: ");
             int escolha = lerInteiro();
 
             switch (escolha) {
-                case 1: facade.processarPedido(pedido.getIdPedido()); break;
-                case 2: menuAplicarDesconto(pedido); break;
-                case 3: facade.registrarPagamento(pedido.getIdPedido()); break;
-                case 0: return;
-                default: System.out.println("Opção inválida.");
+                case 1:
+                    if (!(pedido.getEstadoPreparo() instanceof PedidoProntoState)) {
+                        facade.processarPedido(pedido.getIdPedido());
+                    } else {
+                        System.out.println("Opção inválida para o estado atual.");
+                    }
+                    break;
+                case 2:
+                    menuAplicarDesconto(pedido);
+                    break;
+                case 3:
+                    if (pedido.getStatusPagamento().equals("NAO_PAGO")) {
+                        facade.registrarPagamento(pedido.getIdPedido());
+                    } else {
+                        System.out.println("Opção inválida para o estado atual.");
+                    }
+                    break;
+                case 0:
+                    return;
+                default:
+                    System.out.println("Opção inválida.");
             }
 
             pedido = facade.buscarPedidoPorId(pedido.getIdPedido());
-            if (pedido.getStateAtual() instanceof PedidoEntregueState) {
+            if (pedido == null || isPedidoFinalizado(pedido)) {
                 System.out.println("Pedido finalizado. Retornando à lista.");
+                pressioneEnterParaContinuar();
                 return;
             }
+            pressioneEnterParaContinuar();
         }
     }
 
@@ -261,27 +351,57 @@ public class Main {
             System.out.println("Nenhum pedido no sistema.");
         } else {
             for(Pedido p : pedidos) {
+                System.out.printf("\nPedido de: %-15s (ID: %s...)\n", p.getNomeCliente(), p.getIdPedido().substring(0, 8));
                 imprimirDetalhesPedido(p);
             }
+        }
+        pressioneEnterParaContinuar();
+    }
+
+    // =================================================================
+    // MÉTODOS AUXILIARES (HELPERS)
+    // =================================================================
+
+    public static String traduzirStatus(String statusClassName) {
+        switch (statusClassName) {
+            case "PedidoRecebidoState": return "Recebido pela cozinha";
+            case "PedidoEmPreparoState": return "Em preparo!";
+            case "PedidoProntoState": return "Pronto para retirada";
+            default: return statusClassName;
         }
     }
 
     private static void imprimirResumoPedido(Pedido p, int numero) {
-        System.out.printf("%d. Cliente: %-15s | Status: %-26s | Preço Final: R$%-7.2f | ID: %s... \n",
+        String statusCombinado = traduzirStatus(p.getEstadoPreparo().getClass().getSimpleName()) + " (" + p.getStatusPagamento() + ")";
+        System.out.printf("%d. Cliente: %-15s | Status: %-38s | Preço Final: R$%-7.2f \n",
                 numero,
                 p.getNomeCliente(),
-                traduzirStatus(p.getStateAtual().getClass().getSimpleName()),
-                p.getPrecoTotal(),
-                p.getIdPedido().substring(0, 8)
+                statusCombinado,
+                p.getPrecoTotal()
         );
     }
 
     private static void imprimirDetalhesPedido(Pedido p) {
-        System.out.printf("   Status: %-26s | Preço Original: R$%-7.2f | Desconto: %-18s | Preço Final: R$%-7.2f\n",
-                traduzirStatus(p.getStateAtual().getClass().getSimpleName()),
+        String statusPreparo = "Preparo: " + traduzirStatus(p.getEstadoPreparo().getClass().getSimpleName());
+        String statusPagamento = "Pagamento: " + p.getStatusPagamento();
+        String descontoStr = p.getDescontoAplicado() != null && !p.getDescontoAplicado().equals("SemDesconto")
+                ? p.getDescontoAplicado()
+                : "Nenhum";
+
+        System.out.printf("   %-30s | %-20s\n", statusPreparo, statusPagamento);
+        System.out.printf("   Preço Original: R$%-7.2f | Desconto: %-18s | Preço Final: R$%-7.2f\n",
                 p.getPrecoOriginal(),
-                p.getDescontoAplicado(),
+                descontoStr,
                 p.getPrecoTotal());
+
+        System.out.println("   Itens do Pedido:");
+        if (p.getItens() == null || p.getItens().isEmpty()) {
+            System.out.println("     (Nenhum item encontrado para este pedido)");
+        } else {
+            for (ItemPedido item : p.getItens()) {
+                System.out.printf("     - %dx %s\n", item.getQuantidade(), item.getDescricao());
+            }
+        }
     }
 
     private static int lerInteiro() {
@@ -291,5 +411,19 @@ public class Main {
             System.out.println("Entrada inválida. Por favor, digite um número.");
             return -1;
         }
+    }
+
+    private static boolean isPedidoFinalizado(Pedido p) {
+        return p.getEstadoPreparo() instanceof PedidoProntoState && p.getStatusPagamento().equals("PAGO");
+    }
+
+    private static void limparTela() {
+        // Simples aproximação para limpar o console
+        for (int i = 0; i < 30; i++) System.out.println();
+    }
+
+    private static void pressioneEnterParaContinuar() {
+        System.out.println("\nPressione Enter para continuar...");
+        scanner.nextLine();
     }
 }
